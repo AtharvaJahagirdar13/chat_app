@@ -22,12 +22,12 @@ const App = () => {
   }, [checkAuth]);
   console.log({authUser});
 
-  if(isCheckingAuth && !authUser) return (
-    <div className="flex item-center justify-center h-screen">
-      <Loader className="size-10 animate-spin" />
+  // if(isCheckingAuth && !authUser) return (
+  //   <div className="flex item-center justify-center h-screen">
+  //     <Loader className="size-10 animate-spin" />
 
-    </div>
-  )
+   //  </div>
+   // )
   
 
   return (
