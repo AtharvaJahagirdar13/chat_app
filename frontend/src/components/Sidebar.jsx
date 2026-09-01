@@ -1,87 +1,96 @@
+import { MessageSquarePlus, MessagesSquare } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { getConversationPartner, useChatStore } from "../store/useChatStore";
+import NewChatModal from "./NewChatModal";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
-import { Users } from "lucide-react";
 
 const Sidebar = () => {
-  const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading } = useChatStore();
-
-  const { onlineUsers } = useAuthStore();
-  const [showOnlineOnly, setShowOnlineOnly] = useState(false);
+  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const {
+    conversations,
+    getConversations,
+    selectedConversation,
+    selectConversation,
+    isConversationsLoading,
+  } = useChatStore();
+  const { authUser, onlineUsers } = useAuthStore();
 
   useEffect(() => {
-    getUsers();
-  }, [getUsers]);
+    void getConversations();
+  }, [getConversations]);
 
-  const filteredUsers = showOnlineOnly
-    ? users.filter((user) => onlineUsers.includes(user._id))
-    : users;
-
-  if (isUsersLoading) return <SidebarSkeleton />;
+  if (isConversationsLoading) return <SidebarSkeleton />;
 
   return (
-    <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
-      <div className="border-b border-base-300 w-full p-5">
-        <div className="flex items-center gap-2">
-          <Users className="size-6" />
-          <span className="font-medium hidden lg:block">Contacts</span>
-        </div>
-        {/* TODO: Online filter toggle */}
-        <div className="mt-3 hidden lg:flex items-center gap-2">
-          <label className="cursor-pointer flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={showOnlineOnly}
-              onChange={(e) => setShowOnlineOnly(e.target.checked)}
-              className="checkbox checkbox-sm"
-            />
-            <span className="text-sm">Show online only</span>
-          </label>
-          <span className="text-xs text-zinc-500">({onlineUsers.length - 1} online)</span>
-        </div>
-      </div>
-
-      <div className="overflow-y-auto w-full py-3">
-        {filteredUsers.map((user) => (
-          <button
-            key={user._id}
-            onClick={() => setSelectedUser(user)}
-            className={`
-              w-full p-3 flex items-center gap-3
-              hover:bg-base-300 transition-colors
-              ${selectedUser?._id === user._id ? "bg-base-300 ring-1 ring-base-300" : ""}
-            `}
-          >
-            <div className="relative mx-auto lg:mx-0">
-              <img
-                src={user.profilePic || "/avatar.png"}
-                alt={user.name}
-                className="size-12 object-cover rounded-full"
-              />
-              {onlineUsers.includes(user._id) && (
-                <span
-                  className="absolute bottom-0 right-0 size-3 bg-green-500 
-                  rounded-full ring-2 ring-zinc-900"
-                />
-              )}
+    <>
+      <aside className="flex h-full w-20 flex-col border-r border-base-300 transition-all duration-200 lg:w-72">
+        <div className="w-full border-b border-base-300 p-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <MessagesSquare className="size-6" />
+              <span className="hidden font-medium lg:block">Conversations</span>
             </div>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm btn-circle lg:btn-square"
+              aria-label="New Chat"
+              onClick={() => setIsNewChatOpen(true)}
+            >
+              <MessageSquarePlus className="size-4" />
+              <span className="hidden lg:inline">New</span>
+            </button>
+          </div>
+        </div>
 
-            {/* User info - only visible on larger screens */}
-            <div className="hidden lg:block text-left min-w-0">
-              <div className="font-medium truncate">{user.fullName}</div>
-              <div className="text-sm text-zinc-400">
-                {onlineUsers.includes(user._id) ? "Online" : "Offline"}
-              </div>
+        <div className="w-full flex-1 overflow-y-auto py-3">
+          {conversations.map((conversation) => {
+            const partner = getConversationPartner(conversation, authUser?._id);
+            if (!partner) return null;
+            const isOnline = onlineUsers.includes(partner._id);
+            const lastMessage = conversation.lastMessageId;
+            return (
+              <button
+                type="button"
+                key={conversation._id}
+                onClick={() => selectConversation(conversation)}
+                className={`flex w-full items-center gap-3 p-3 transition-colors hover:bg-base-300 ${
+                  selectedConversation?._id === conversation._id
+                    ? "bg-base-300 ring-1 ring-base-300"
+                    : ""
+                }`}
+              >
+                <div className="relative mx-auto lg:mx-0">
+                  <img
+                    src={partner.profilePic || "/avatar.png"}
+                    alt={partner.fullName}
+                    className="size-12 rounded-full object-cover"
+                  />
+                  {isOnline && (
+                    <span className="absolute bottom-0 right-0 size-3 rounded-full bg-green-500 ring-2 ring-zinc-900" />
+                  )}
+                </div>
+                <div className="hidden min-w-0 text-left lg:block">
+                  <div className="truncate font-medium">{partner.fullName}</div>
+                  <div className="truncate text-sm text-zinc-400">
+                    {lastMessage?.text || (lastMessage?.image ? "Image" : "No messages yet")}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+
+          {conversations.length === 0 && (
+            <div className="px-3 py-8 text-center text-sm text-zinc-500">
+              <span className="hidden lg:inline">No conversations yet</span>
+              <MessagesSquare className="mx-auto size-5 lg:hidden" aria-label="No conversations yet" />
             </div>
-          </button>
-        ))}
-
-        {filteredUsers.length === 0 && (
-          <div className="text-center text-zinc-500 py-4">No online users</div>
-        )}
-      </div>
-    </aside>
+          )}
+        </div>
+      </aside>
+      {isNewChatOpen && <NewChatModal onClose={() => setIsNewChatOpen(false)} />}
+    </>
   );
 };
+
 export default Sidebar;

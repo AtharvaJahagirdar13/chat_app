@@ -5,7 +5,10 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "node --test",
+    "migrate:conversations": "node src/scripts/migrate-conversations.js",
+    "migrate:conversations:dry-run": "node src/scripts/migrate-conversations.js --dry-run"
   },
   "keywords": [],
   "author": "",
@@ -14,14 +17,14 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "chat-app": "file:..",
-    "cloudinary": "^2.5.1",
+    "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.21.1",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.8.1",
-    "socket.io": "^4.8.1"
+    "express": "^4.22.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.24.4",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"

@@ -1,9 +1,16 @@
 import { create } from "zustand";
-import { axiosInstance } from "../lib/axios.js";
+import { axiosInstance, getApiErrorMessage } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 
-const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:5002" : "/";
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  (import.meta.env.MODE === "development" ? "http://localhost:5002" : undefined);
+
+const resetPrivateChatState = async () => {
+  const { useChatStore } = await import("./useChatStore.js");
+  useChatStore.getState().reset();
+};
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
@@ -18,11 +25,16 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.get("/auth/check");
 
+      if (get().authUser?._id && get().authUser._id !== res.data._id) {
+        await resetPrivateChatState();
+        get().disconnectSocket();
+      }
       set({ authUser: res.data });
       get().connectSocket();
-    } catch (error) {
-      console.log("Error in checkAuth:", error);
-      set({ authUser: null });
+    } catch {
+      await resetPrivateChatState();
+      get().disconnectSocket();
+      set({ authUser: null, onlineUsers: [], socket: null });
     } finally {
       set({ isCheckingAuth: false });
     }
@@ -32,11 +44,13 @@ export const useAuthStore = create((set, get) => ({
     set({ isSigningUp: true });
     try {
       const res = await axiosInstance.post("/auth/signup", data);
+      await resetPrivateChatState();
+      get().disconnectSocket();
       set({ authUser: res.data });
       toast.success("Account created successfully");
       get().connectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(getApiErrorMessage(error, "Failed to create account"));
     } finally {
       set({ isSigningUp: false });
     }
@@ -46,12 +60,14 @@ export const useAuthStore = create((set, get) => ({
     set({ isLoggingIn: true });
     try {
       const res = await axiosInstance.post("/auth/login", data);
+      await resetPrivateChatState();
+      get().disconnectSocket();
       set({ authUser: res.data });
       toast.success("Logged in successfully");
 
       get().connectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(getApiErrorMessage(error, "Failed to log in"));
     } finally {
       set({ isLoggingIn: false });
     }
@@ -60,11 +76,12 @@ export const useAuthStore = create((set, get) => ({
   logout: async () => {
     try {
       await axiosInstance.post("/auth/logout");
-      set({ authUser: null });
-      toast.success("Logged out successfully");
+      await resetPrivateChatState();
       get().disconnectSocket();
+      set({ authUser: null, onlineUsers: [], socket: null });
+      toast.success("Logged out successfully");
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(getApiErrorMessage(error, "Failed to log out"));
     }
   },
 
@@ -76,7 +93,7 @@ export const useAuthStore = create((set, get) => ({
       toast.success("Profile updated successfully");
     } catch (error) {
       console.log("error in update profile:", error);
-      toast.error(error.response.data.message);
+      toast.error(getApiErrorMessage(error, "Failed to update profile"));
     } finally {
       set({ isUpdatingProfile: false });
     }
@@ -86,22 +103,22 @@ export const useAuthStore = create((set, get) => ({
     const { authUser } = get();
     if (!authUser || get().socket?.connected) return;
 
-    const socket = io(BASE_URL, {
-      query: {
-        userId: authUser._id,
-      },
-       withCredentials: true,   
-        transports: ["websocket"],
+    const socket = io(SOCKET_URL, {
+      withCredentials: true,
+      transports: ["websocket"],
+      autoConnect: false,
     });
-    socket.connect();
-
-    set({ socket: socket });
 
     socket.on("getOnlineUsers", (userIds) => {
       set({ onlineUsers: userIds });
     });
+
+    set({ socket });
+    socket.connect();
   },
   disconnectSocket: () => {
-    if (get().socket?.connected) get().socket.disconnect();
+    const socket = get().socket;
+    if (socket) socket.disconnect();
+    set({ socket: null, onlineUsers: [] });
   },
 }));

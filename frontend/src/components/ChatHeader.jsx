@@ -3,8 +3,11 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 
 const ChatHeader = () => {
-  const { selectedUser, setSelectedUser } = useChatStore();
-  const { onlineUsers } = useAuthStore();
+  const { selectedConversation, selectConversation } = useChatStore();
+  const { authUser, onlineUsers } = useAuthStore();
+  const selectedUser = selectedConversation.participants.find(
+    (participant) => participant._id !== authUser._id
+  );
 
   return (
     <div className="p-2.5 border-b border-base-300">
@@ -27,7 +30,7 @@ const ChatHeader = () => {
         </div>
 
         {/* Close button */}
-        <button onClick={() => setSelectedUser(null)}>
+        <button onClick={() => selectConversation(null)}>
           <X />
         </button>
       </div>

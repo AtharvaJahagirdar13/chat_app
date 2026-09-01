@@ -12,20 +12,17 @@ const ChatContainer = () => {
     messages,
     getMessages,
     isMessagesLoading,
-    selectedUser,
-    subscribeToMessages,
-    unsubscribeFromMessages,
+    selectedConversation,
   } = useChatStore();
   const { authUser } = useAuthStore();
+  const selectedUser = selectedConversation.participants.find(
+    (participant) => participant._id !== authUser._id
+  );
   const messageEndRef = useRef(null);
 
   useEffect(() => {
-    getMessages(selectedUser._id);
-
-    subscribeToMessages();
-
-    return () => unsubscribeFromMessages();
-  }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeFromMessages]);
+    getMessages(selectedConversation._id);
+  }, [selectedConversation._id, getMessages]);
 
   useEffect(() => {
     if (messageEndRef.current && messages) {

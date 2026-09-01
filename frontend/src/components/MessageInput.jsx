@@ -7,12 +7,22 @@ const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
-  const { sendMessage } = useChatStore();
+  const { sendMessage, selectedConversation } = useChatStore();
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
+    if (!file) return;
+
+    const supportedImageTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+    if (!supportedImageTypes.includes(file.type)) {
+      toast.error("Please select a PNG, JPEG, WebP, or GIF image");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 1.5 * 1024 * 1024) {
+      toast.error("Image must be smaller than 1.5 MB");
+      e.target.value = "";
       return;
     }
 
@@ -33,17 +43,17 @@ const MessageInput = () => {
     if (!text.trim() && !imagePreview) return;
 
     try {
-      await sendMessage({
-        text: text.trim(),
-        image: imagePreview,
-      });
+      await sendMessage(selectedConversation._id, {
+          text: text.trim(),
+          image: imagePreview,
+        });
 
       // Clear form
       setText("");
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (error) {
-      console.error("Failed to send message:", error);
+    } catch {
+      // The store displays the error; retain the composer content for retry.
     }
   };
 
@@ -80,7 +90,7 @@ const MessageInput = () => {
           />
           <input
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg,image/webp,image/gif"
             className="hidden"
             ref={fileInputRef}
             onChange={handleImageChange}
