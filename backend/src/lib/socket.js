@@ -3,19 +3,21 @@ import http from "http";
 import express from "express";
 import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
-import { config } from "dotenv";
 import User from "../models/user.model.js";
-
-config();
+import { getClientOrigin } from "./config.js";
 
 const app = express();
 const server = http.createServer(app);
+const clientOrigin = getClientOrigin();
 
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+    origin: clientOrigin,
     methods: ["GET", "POST"],
     credentials: true,
+  },
+  allowRequest: (request, callback) => {
+    callback(null, request.headers.origin === clientOrigin);
   },
 });
 
